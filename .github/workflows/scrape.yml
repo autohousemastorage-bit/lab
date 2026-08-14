@@ -26,16 +26,33 @@ jobs:
           cd scraper
           npm install
 
+      - name: Decompress Data
+        run: |
+          cd scraper
+          if [ -f data.jsonl.gz ]; then
+            echo "Decompressing data.jsonl.gz..."
+            gzip -d data.jsonl.gz
+          fi
+
       - name: Run Scraper
         run: |
           cd scraper
           npx tsx index.ts
 
+      - name: Compress Data
+        run: |
+          cd scraper
+          if [ -f data.jsonl ]; then
+            echo "Compressing data.jsonl to data.jsonl.gz..."
+            gzip -k data.jsonl
+          fi
+
       - name: Commit Progress and Data
         run: |
           git config --global user.name "autohousemastorage-bit"
           git config --global user.email "autohousema.storage@gmail.com"
-          git add scraper/data.jsonl scraper/progress.json scraper/error.log || true
+          git rm --cached scraper/data.jsonl || true
+          git add scraper/data.jsonl.gz scraper/progress.json scraper/error.log || true
           git commit -m "Auto-commit scraping progress" || echo "No changes to commit"
           git push
 
