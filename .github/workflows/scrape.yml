@@ -1,0 +1,51 @@
+name: Run Largus Scraper
+
+on:
+  workflow_dispatch:  # Allow manual trigger
+  repository_dispatch:
+    types: [continue_scraping]
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: |
+          cd scraper
+          npm install
+
+      - name: Run Scraper
+        run: |
+          cd scraper
+          npx tsx index.ts
+
+      - name: Commit Progress and Data
+        run: |
+          git config --global user.name "autohousemastorage-bit"
+          git config --global user.email "autohousema.storage@gmail.com"
+          git add scraper/data.jsonl scraper/progress.json scraper/error.log || true
+          git commit -m "Auto-commit scraping progress" || echo "No changes to commit"
+          git push
+
+      - name: Trigger next run if not finished
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ ! -f scraper/DONE ]; then
+            echo "Scraping not finished yet. Triggering next run..."
+            gh workflow run scrape.yml -R autohousemastorage-bit/LARGUSCRAPER
+          else
+            echo "Scraping fully finished!"
+          fi
